@@ -1,0 +1,79 @@
+From 8f30a18fbabb876eeb2ef3868466592aa1b576ae Mon Sep 17 00:00:00 2001
+From: Cybertiron <alvydas.jokubauskas1@gmail.com>
+Date: Sat, 29 Aug 2026 23:00:48 +0300
+Subject: [PATCH] fix(bth): route DS3 output reports over interrupt channel so
+ rumble works over Bluetooth
+
+DS3 rumble works over USB but never over Bluetooth (see discussion #97,
+issue #4). LED changes are applied over BT, but the rumble motors never
+actuate wirelessly.
+
+Root cause: on Bluetooth the output report (LED + rumble) is sent over the
+HID *control* channel via IOCTL_BTHPS3_HID_CONTROL_WRITE, prefixed with
+0x52 (SET_REPORT | Output). The DS3 firmware honours LED state from a
+control-channel Set_Report but ignores the rumble bytes delivered that way.
+Over USB the same report is written to the interrupt OUT endpoint, which is
+why rumble works wired.
+
+Fix: send the BT output report over the HID *interrupt* channel
+(IOCTL_BTHPS3_HID_INTERRUPT_WRITE) with a 0xA2 (DATA | Output) prefix,
+mirroring the USB path.
+
+  - driver/Device.c        output writer module -> INTERRUPT_WRITE
+  - driver/OutputReport.c  send call            -> INTERRUPT_WRITE
+  - driver/Ds3.c           BT report[0] 0x52     -> 0xA2
+
+Verified on real hardware (SIXAXIS over BthPS3, XInput mode): rumble now
+actuates over Bluetooth. LED state is unaffected. A single output report
+runs the motor for ~1s (DS3 duration byte); games that stream rumble
+refresh it and sustain continuous vibration (confirmed 6s).
+
+Addresses #97, #4
+---
+ driver/Device.c       | 2 +-
+ driver/Ds3.c          | 2 +-
+ driver/OutputReport.c | 2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/driver/Device.c b/driver/Device.c
+index 6544872..cd2f487 100644
+--- a/driver/Device.c
++++ b/driver/Device.c
+@@ -1298,7 +1298,7 @@ DmfDeviceModulesAdd(
+ 		bthWriterCfg.ContinuousRequestTargetModuleConfig.ContinuousRequestCount = 1;
+ 		bthWriterCfg.ContinuousRequestTargetModuleConfig.PoolTypeInput = NonPagedPoolNx;
+ 		bthWriterCfg.ContinuousRequestTargetModuleConfig.PurgeAndStartTargetInD0Callbacks = FALSE;
+-		bthWriterCfg.ContinuousRequestTargetModuleConfig.ContinuousRequestTargetIoctl = IOCTL_BTHPS3_HID_CONTROL_WRITE;
++		bthWriterCfg.ContinuousRequestTargetModuleConfig.ContinuousRequestTargetIoctl = IOCTL_BTHPS3_HID_INTERRUPT_WRITE;
+ 		bthWriterCfg.ContinuousRequestTargetModuleConfig.EvtContinuousRequestTargetBufferInput = DsBth_HidControlWriteContinuousRequestCompleted;
+ 		bthWriterCfg.ContinuousRequestTargetModuleConfig.RequestType = ContinuousRequestTarget_RequestType_Ioctl;
+ 		bthWriterCfg.ContinuousRequestTargetModuleConfig.ContinuousRequestTargetMode = ContinuousRequestTarget_Mode_Manual;
+diff --git a/driver/Ds3.c b/driver/Ds3.c
+index 320770f..f51b93e 100644
+--- a/driver/Ds3.c
++++ b/driver/Ds3.c
+@@ -23,7 +23,7 @@ const UCHAR G_Ds3UsbHidOutputReport[] = {
+ // Default Output Report for LED & Rumble state changes (Bluetooth)
+ // 
+ const UCHAR G_Ds3BthHidOutputReport[] = {
+-	0x52, /* HID BT Set_report (0x50) | Report Type (Output 0x02)*/
++	0xA2, /* HID BT DATA (0xA0) | Report Type (Output 0x02) -- interrupt channel so rumble actuates (was 0x52 Set_report/control) */
+ 	0x01, /* Report ID */
+ 	0x00, 0xFF, 0x00, 0xFF, 0x00,
+ 	0x00, 0x00, 0x00, 0x00, 0x00,
+diff --git a/driver/OutputReport.c b/driver/OutputReport.c
+index 811d8f1..8938222 100644
+--- a/driver/OutputReport.c
++++ b/driver/OutputReport.c
+@@ -293,7 +293,7 @@ DSHM_EvtExecuteOutputPacketReceived(
+ 			NULL,
+ 			0,
+ 			ContinuousRequestTarget_RequestType_Ioctl,
+-			IOCTL_BTHPS3_HID_CONTROL_WRITE,
++			IOCTL_BTHPS3_HID_INTERRUPT_WRITE,
+ 			0,
+ 			&bytesWritten
+ 		);
+-- 
+2.55.0.windows.2
+
