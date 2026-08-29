@@ -71,33 +71,17 @@ the test-signing steps below.
 
 ---
 
-## ⚠️ Security warning — read before installing the prebuilt driver
+## Install — pick a path
 
-The release binary is **test-signed with a self-signed certificate**, not signed by Microsoft.
-To use it you must:
+Two ways to get Bluetooth rumble, plus the future official one. **Only Option A touches Test Mode**;
+Option B needs no cert, no Test Mode, and nothing to undo.
 
-1. Trust the included certificate (import it into your machine's trusted stores), and
-2. Enable Windows **Test Signing** mode (`bcdedit /set testsigning on` — leaves a "Test Mode"
-   desktop watermark and lowers a driver-signing security boundary system-wide).
+### Option A — install the fixed driver
 
-Trusting the certificate means your machine will accept **anything** signed by that cert's private
-key. Only do this if you understand and accept that risk. If you'd rather not: build it yourself and
-sign with your own cert (see below), or wait for the upstream PR to ship an officially signed build.
-
-Use at your own risk. Provided as-is, no warranty.
-
-> **Want to avoid Test Mode entirely?** There's an alternative architecture — a userland app driving
-> the already-signed **ViGEmBus** instead of a custom driver (no test signing needed). See
-> [docs/ALTERNATYVA-vigem-userland.md](docs/ALTERNATYVA-vigem-userland.md). Note: the same
-> interrupt-channel (`0xA2`) rule applies there for BT rumble.
-
-## Install (prebuilt)
-
-**Easiest:** download the zip from [Releases](../../releases), extract, and run
-[`install.ps1`](install.ps1) — it self-elevates and does everything below (trust cert → install
-driver → enable Test Signing → offer reboot). To undo, run [`uninstall.ps1`](uninstall.ps1).
-
-Prefer to do it by hand? In an **elevated PowerShell**:
+The release ships a **test-signed** build of the patched DsHidMini. Easiest: extract the zip and run
+[`install.ps1`](install.ps1) — it self-elevates and does everything (trust cert → install driver →
+enable Test Signing → offer reboot). `uninstall.ps1` reverts it. Prefer to do it by hand? In an
+**elevated PowerShell**:
 
 ```powershell
 # 1. trust the test certificate
@@ -117,7 +101,35 @@ pnputil /add-driver .\dshidmini.inf /install
 Then re-pair the controller: plug it in over **USB** for a few seconds (BthPS3 rewrites the host
 address), unplug, press the **PS** button to reconnect over Bluetooth, and rumble will work.
 
-## Revert
+*A note on the cert:* the binary is signed with a self-signed certificate (not Microsoft's), so this
+path needs Test Signing on. Trusting the cert means your machine trusts anything signed by its key —
+whose private key only lives on my machine. It's the usual community-driver setup; fine for a
+personal PC if you accept that. Reverting is easy — see [Revert](#revert-option-a). Provided as-is,
+no warranty.
+
+### Option B — inject via ViGEmBus (no Test Mode, nothing to revert)
+
+No driver install, no cert, no Test Mode — just a portable app. **Extract the tool zip
+(`Ds3ViGEmBridge-tool-v1.0.0.zip`) → run `Ds3ViGEmBridge.exe` → follow the GUI.** In-app **Help → How
+to use** and the hover-tooltips walk you through it; nothing to undo afterwards — just close it.
+
+Under the hood it drives the **officially-signed ViGEmBus** to inject a virtual Xbox 360 pad from the
+DS3. Two prerequisites: **[ViGEmBus](https://github.com/nefarius/ViGEmBus) installed**, and for the
+direct path the DS3 must be **free of DsHidMini** (this path runs instead of it). Prototype — details
+in [docs/ALTERNATYVA-vigem-userland.md](docs/ALTERNATYVA-vigem-userland.md) and
+[alternative-vigem/](alternative-vigem/). Same `0xA2` interrupt-channel rule applies for BT rumble.
+
+### Option C — wait for official signing
+
+Once the [upstream PR](https://github.com/nefarius/DsHidMini/pull/460) merges and Nefarius ships an
+officially signed build, install that — no Test Mode, no cert, none of the above.
+
+## Revert (Option A)
+
+Only needed if you took **Option A** (the driver). **Option B (inject) has nothing to revert** — just
+close the app; uninstall ViGEmBus normally if you ever want to.
+
+For Option A, in an **elevated PowerShell**:
 
 ```powershell
 # restore the official driver first (Nefarius updater), THEN turn test signing off + reboot
