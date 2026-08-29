@@ -122,8 +122,10 @@ Then test-sign `dshidmini.dll`, regenerate the catalog with `inf2cat`, and sign 
 
 ## Support
 
-If this fix saved you a headache, you can [**buy me a coffee** ☕](https://buymeacoffee.com/cybertiron)
-— it keeps me debugging and shipping free fixes. Completely optional, and thank you!
+If this fix saved you a headache, you can buy me a coffee — it keeps me debugging and shipping free
+fixes. Completely optional, and thank you!
+
+[![Buy Me A Coffee](https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=%E2%98%95&slug=cybertiron&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff)](https://www.buymeacoffee.com/cybertiron)
 
 ## Credits
 
