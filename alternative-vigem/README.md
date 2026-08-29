@@ -19,6 +19,28 @@ A small WinForms tool that demonstrates the **[ViGEmBus userland alternative](..
   and a byte-level output-report log, so you can *see* why `0x52` (control) fails and `0xA2`
   (interrupt) works over Bluetooth (the exact thing the driver fix changes).
 
+## How to use (step by step)
+
+### To actually feel vibration right now → **Tab 1 (XInput rumble tester)**
+This works with your current setup (fixed DsHidMini, controller over Bluetooth) — no DS3 removal needed.
+1. Connect the DS3 (it shows up as an Xbox pad via DsHidMini).
+2. Open **XInput rumble tester**.
+3. Leave the controller picker on **Auto** (or pick the slot).
+4. Drag **Large** / **Small** and hit **Apply now**, or use **Test 1 s** / **Hold** / **Pulse**.
+   You should feel it immediately. The log shows what was sent + which slot answered.
+
+### To try the userland alternative → **Tab 2 (DS3 direct + ViGEm bridge)**
+This path talks to the DS3 **directly** and bypasses Test Mode — but it needs the DS3 as a raw USB
+HID device, so **DsHidMini must not own it**.
+- If you see **"DS3 not found"** while the pad is connected, that's because **DsHidMini currently
+  owns it**. In that state the *Output report log still prints the report bytes* (educational), but
+  nothing physically vibrates because no DS3 handle is open.
+- To use it for real: remove DsHidMini (or bind the DS3 to WinUSB), connect the DS3 over USB, then
+  **Open DS3 (USB)** → **Start bridge → Xbox 360**. Now the DS3 acts as a virtual Xbox pad with **no
+  Test Mode**, and game rumble is forwarded back to it.
+- The **Channel** dropdown (USB / BT `0xA2` / BT `0x52`) changes the byte framing shown in the log —
+  so you can *see* why control-channel `0x52` is ignored and interrupt `0xA2` works over Bluetooth.
+
 ## Requirements
 
 - **[ViGEmBus](https://github.com/nefarius/ViGEmBus)** installed (for Tab 2).
