@@ -40,8 +40,11 @@ Send the Bluetooth output report over the HID **interrupt** channel
 See [`dshidmini-bt-rumble.patch`](dshidmini-bt-rumble.patch).
 
 **Verified on real hardware** (SIXAXIS over BthPS3, XInput mode): rumble now actuates over
-Bluetooth, LED state is unaffected. A single output report runs the motor for ~1 s (the DS3
-duration byte); games that stream rumble refresh it and sustain continuous vibration (confirmed 6 s).
+Bluetooth, LED state is unaffected. Also confirmed independently in-browser via the Gamepad API at
+[hardwaretester.com/gamepad](https://hardwaretester.com/gamepad) — the pad shows `VIBRATION: Yes`
+and both its "Vibration, 1 sec" and "Vibration, infinite" buttons drive the motors over BT. A single
+output report runs the motor for ~1 s (the DS3 duration byte); games that stream rumble refresh it
+and sustain continuous vibration (confirmed 6 s).
 
 ## Upstream
 
