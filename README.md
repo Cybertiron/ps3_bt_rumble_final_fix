@@ -46,6 +46,23 @@ and both its "Vibration, 1 sec" and "Vibration, infinite" buttons drive the moto
 output report runs the motor for ~1 s (the DS3 duration byte); games that stream rumble refresh it
 and sustain continuous vibration (confirmed 6 s).
 
+## How this fix was found
+
+1. **The key symptom.** Rumble worked over USB but never over Bluetooth — yet **LED changes *did*
+   apply over BT**. That was the whole clue: if LED updates arrive, the output reports are reaching
+   the pad. So the rumble bytes weren't being *lost* — the DS3 was **receiving and ignoring** them.
+2. **Read the source, compare the two transports.** In DsHidMini the USB path writes the output
+   report to the **interrupt OUT** endpoint, while the Bluetooth path sends the *same* report over
+   the HID **control** channel (`0x52` Set_Report). Same bytes, different channel.
+3. **Hypothesis.** The DS3 firmware accepts LED from a control-channel Set_Report but only actuates
+   the motors from an **interrupt-channel** report (`0xA2` DATA|Output) — the form the real PS3 and
+   the USB path use.
+4. **Patch + build.** Three lines to route BT output over `IOCTL_BTHPS3_HID_INTERRUPT_WRITE` with a
+   `0xA2` prefix. Built with the EWDK, test-signed, and installed under Test Signing.
+5. **Verify on hardware.** Direct `XInputSetState` from PowerShell, then the browser Gamepad API
+   ([hardwaretester.com/gamepad](https://hardwaretester.com/gamepad)), then a 6-second sustained
+   test — all three showed the motors running **over Bluetooth**. Fixed. ✅
+
 ## Upstream
 
 Pull request: **[nefarius/DsHidMini#460](https://github.com/nefarius/DsHidMini/pull/460)** — please
