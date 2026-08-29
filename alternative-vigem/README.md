@@ -48,16 +48,35 @@ HID device, so **DsHidMini must not own it**.
 - For Tab 2 the DS3 must be reachable as a raw USB HID device — i.e. **DsHidMini must not own it**
   (remove DsHidMini, or bind the DS3 to WinUSB). Tab 1 works regardless.
 
-## Run
+## Get it / run it
 
-Grab `Ds3ViGEmBridge.exe` from the [release](https://github.com/Cybertiron/ps3_bt_rumble_final_fix/releases),
-or build it yourself:
+On the [release page](https://github.com/Cybertiron/ps3_bt_rumble_final_fix/releases) the download
+**`Ds3ViGEmBridge-tool-v1.0.0.zip`** is a **ZIP file** (not a folder). Steps:
+
+1. **Download** the zip and **extract** it (right-click → Extract All).
+2. Inside you get **`Ds3ViGEmBridge.exe`** — double-click it to run. (Needs the .NET 8 Desktop Runtime.)
+
+There is **no installer** — it's a single portable `.exe`.
+
+Or build it yourself:
 
 ```
 dotnet build -c Release
 # or a single-file exe:
 dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o publish
 ```
+
+## Which driver do I need?
+
+- **Tab 1 (XInput rumble tester)** works with whatever presents the pad as an XInput controller —
+  the **official/original DsHidMini works too**, you do **not** need the patched driver just to run
+  the tester. Only caveat: with the *original* driver, rumble actuates over **USB only** (the
+  Bluetooth bug this project fixes); with the **patched** driver it also works over Bluetooth.
+- **Tab 2 (DS3 direct + ViGEm bridge)** needs the DS3 as a raw USB HID device, so **no DsHidMini at
+  all** (remove it or bind the DS3 to WinUSB) plus **ViGEmBus** installed. This path needs no Test
+  Mode.
+
+In-app help: use **Help → How to use…**, or just **hover any control** for a one-line description.
 
 ## Notes / honesty
 

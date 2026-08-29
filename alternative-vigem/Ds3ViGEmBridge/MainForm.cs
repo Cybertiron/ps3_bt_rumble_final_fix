@@ -43,6 +43,8 @@ public sealed class MainForm : Form
     private CancellationTokenSource? _bridgeCts;
     private volatile byte _lastLarge, _lastSmall;
 
+    private readonly ToolTip _tips = new() { AutoPopDelay = 20000, InitialDelay = 300, ReshowDelay = 100, ShowAlways = true };
+
     public MainForm()
     {
         Text = "DS3 ↔ ViGEm bridge + rumble tester";
@@ -52,6 +54,17 @@ public sealed class MainForm : Form
         tabs.TabPages.Add(BuildXInputTab());
         tabs.TabPages.Add(BuildDs3Tab());
         Controls.Add(tabs);
+
+        var menu = new MenuStrip();
+        var help = new ToolStripMenuItem("&Help");
+        help.DropDownItems.Add(new ToolStripMenuItem("How to use…", null, (_, _) => { using var f = new HelpForm(); f.ShowDialog(this); }));
+        help.DropDownItems.Add(new ToolStripMenuItem("About", null, (_, _) =>
+            MessageBox.Show(this,
+                "DS3 ↔ ViGEm bridge + rumble tester\n\nPart of ps3_bt_rumble_final_fix\nhttps://github.com/Cybertiron/ps3_bt_rumble_final_fix\n\nTip: hover any control for a short description.",
+                "About", MessageBoxButtons.OK, MessageBoxIcon.Information)));
+        menu.Items.Add(help);
+        Controls.Add(menu);
+        MainMenuStrip = menu;
 
         for (int i = 0; i < 4; i++) _cmbSlot.Items.Add($"Slot {i}");
         _cmbSlot.Items.Insert(0, "Auto");
@@ -101,6 +114,15 @@ public sealed class MainForm : Form
         btnHold.Click += (_, _) => { bool on = !(btnHold.Tag is bool t && t); btnHold.Tag = on; btnHold.Text = on ? "Hold (on)" : "Hold"; SendXInput(on ? (ushort)_xiLarge.Value : (ushort)0, on ? (ushort)_xiSmall.Value : (ushort)0, "hold"); };
         btnPulse.Click += (_, _) => { if (_pulseTimer.Enabled) { _pulseTimer.Stop(); SendXInput(0, 0, "pulse-stop"); btnPulse.Text = "Pulse"; } else { _pulseTimer.Start(); btnPulse.Text = "Pulse (on)"; } };
         btnStop.Click += (_, _) => { _pulseTimer.Stop(); _autoOff.Stop(); btnHold.Tag = false; btnHold.Text = "Hold"; btnPulse.Text = "Pulse"; SendXInput(0, 0, "stop"); };
+
+        _tips.SetToolTip(_cmbSlot, "Which XInput controller to buzz. 'Auto' sends to every connected pad.");
+        _tips.SetToolTip(_xiLarge, "Left / large motor — low-frequency, strong rumble (0–65535).");
+        _tips.SetToolTip(_xiSmall, "Right / small motor — high-frequency, weak rumble (0–65535).");
+        _tips.SetToolTip(btnApply, "Send the current slider values once, right now.");
+        _tips.SetToolTip(btn1s, "Buzz at the current values for 1 second, then auto-stop.");
+        _tips.SetToolTip(btnHold, "Toggle continuous buzz; the sliders update it live while it's on.");
+        _tips.SetToolTip(btnPulse, "Toggle an on/off pulsing pattern (every 250 ms).");
+        _tips.SetToolTip(btnStop, "Stop all vibration.");
 
         root.Controls.Add(top, 0, 0);
         var logBox = new GroupBox { Text = "Log", Dock = DockStyle.Fill };
@@ -168,6 +190,17 @@ public sealed class MainForm : Form
         bh.Click += (_, _) => { bool on = !(bh.Tag is bool t && t); bh.Tag = on; bh.Text = on ? "Hold (on)" : "Hold"; SendDs3(on ? (byte)_dsLarge.Value : (byte)0, on ? (byte)_dsSmall.Value : (byte)0, "hold"); };
         bp.Click += (_, _) => { if (_dsPulse.Enabled) { _dsPulse.Stop(); SendDs3(0, 0, "pulse-stop"); bp.Text = "Pulse"; } else { _dsPulse.Start(); bp.Text = "Pulse (on)"; } };
         bs.Click += (_, _) => { _dsPulse.Stop(); _dsAutoOff.Stop(); bh.Tag = false; bh.Text = "Hold"; bp.Text = "Pulse"; SendDs3(0, 0, "stop"); };
+
+        _tips.SetToolTip(btnOpen, "Open the DS3 as a raw USB HID device. Fails with 'not found' if DsHidMini owns it.");
+        _tips.SetToolTip(btnBridge, "Start/stop feeding a virtual Xbox 360 pad (via ViGEmBus) from the DS3 — no Test Mode.");
+        _tips.SetToolTip(_cmbChannel, "Output framing shown in the log: USB, BT interrupt 0xA2 (works), BT control 0x52 (DS3 ignores it).");
+        _tips.SetToolTip(_dsLarge, "Large / heavy motor value (0–255).");
+        _tips.SetToolTip(_dsSmall, "Small / light motor value (0–255).");
+        _tips.SetToolTip(b1, "Buzz for 1 second.");
+        _tips.SetToolTip(bh, "Toggle continuous buzz.");
+        _tips.SetToolTip(bp, "Toggle a pulsing pattern.");
+        _tips.SetToolTip(bs, "Stop.");
+        _tips.SetToolTip(_feedback, "Live rumble coming from games into the virtual pad (forwarded to the DS3).");
 
         root.Controls.Add(top, 0, 0);
         var logBox = new GroupBox { Text = "Output report log", Dock = DockStyle.Fill };
