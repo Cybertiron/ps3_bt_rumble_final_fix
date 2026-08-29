@@ -58,10 +58,7 @@ public sealed class MainForm : Form
         var menu = new MenuStrip();
         var help = new ToolStripMenuItem("&Help");
         help.DropDownItems.Add(new ToolStripMenuItem("How to use…", null, (_, _) => { using var f = new HelpForm(); f.ShowDialog(this); }));
-        help.DropDownItems.Add(new ToolStripMenuItem("About", null, (_, _) =>
-            MessageBox.Show(this,
-                "DS3 ↔ ViGEm bridge + rumble tester\n\nPart of ps3_bt_rumble_final_fix\nhttps://github.com/Cybertiron/ps3_bt_rumble_final_fix\n\nTip: hover any control for a short description.",
-                "About", MessageBoxButtons.OK, MessageBoxIcon.Information)));
+        help.DropDownItems.Add(new ToolStripMenuItem("About", null, (_, _) => { using var a = new AboutForm(); a.ShowDialog(this); }));
         menu.Items.Add(help);
         Controls.Add(menu);
         MainMenuStrip = menu;
