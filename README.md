@@ -8,6 +8,8 @@ you don't have to set up the WDK/EWDK yourself.
 > DsHidMini. This repo only carries a small fix on top of it and a convenience build. The proper
 > home for the fix is the upstream pull request — see below.
 
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/cybertiron)
+
 ## The problem
 
 DS3 rumble works over USB but has **never** worked over Bluetooth with DsHidMini. LED changes are
@@ -105,6 +107,11 @@ msbuild driver\dshidmini.vcxproj /p:Configuration=Release /p:Platform=x64 /p:Sig
 ```
 
 Then test-sign `dshidmini.dll`, regenerate the catalog with `inf2cat`, and sign the `.cat`.
+
+## Support
+
+If this fix saved you a headache, you can [**buy me a coffee** ☕](https://buymeacoffee.com/cybertiron)
+— it keeps me debugging and shipping free fixes. Completely optional, and thank you!
 
 ## Credits
 
