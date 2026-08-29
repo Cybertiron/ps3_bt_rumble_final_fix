@@ -43,8 +43,9 @@ duration byte); games that stream rumble refresh it and sustain continuous vibra
 
 ## Upstream
 
-Pull request: **_(link added once opened)_** — please 👍 there so it lands in an official,
-Microsoft-signed release. Once it does, you won't need any of the test-signing steps below.
+Pull request: **[nefarius/DsHidMini#460](https://github.com/nefarius/DsHidMini/pull/460)** — please
+👍 there so it lands in an official, Microsoft-signed release. Once it does, you won't need any of
+the test-signing steps below.
 
 ---
 
