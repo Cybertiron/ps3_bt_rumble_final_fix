@@ -69,6 +69,11 @@ sign with your own cert (see below), or wait for the upstream PR to ship an offi
 
 Use at your own risk. Provided as-is, no warranty.
 
+> **Want to avoid Test Mode entirely?** There's an alternative architecture — a userland app driving
+> the already-signed **ViGEmBus** instead of a custom driver (no test signing needed). See
+> [docs/ALTERNATYVA-vigem-userland.md](docs/ALTERNATYVA-vigem-userland.md). Note: the same
+> interrupt-channel (`0xA2`) rule applies there for BT rumble.
+
 ## Install (prebuilt)
 
 **Easiest:** download the zip from [Releases](../../releases), extract, and run
