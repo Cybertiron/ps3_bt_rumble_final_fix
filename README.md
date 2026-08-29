@@ -71,7 +71,11 @@ Use at your own risk. Provided as-is, no warranty.
 
 ## Install (prebuilt)
 
-Download the zip from [Releases](../../releases), extract, then in an **elevated PowerShell**:
+**Easiest:** download the zip from [Releases](../../releases), extract, and run
+[`install.ps1`](install.ps1) — it self-elevates and does everything below (trust cert → install
+driver → enable Test Signing → offer reboot). To undo, run [`uninstall.ps1`](uninstall.ps1).
+
+Prefer to do it by hand? In an **elevated PowerShell**:
 
 ```powershell
 # 1. trust the test certificate
