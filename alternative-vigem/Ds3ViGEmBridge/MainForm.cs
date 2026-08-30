@@ -46,7 +46,7 @@ public sealed class MainForm : Form
 
     public MainForm()
     {
-        Text = "DS3 / DS4 ↔ ViGEm bridge + rumble tester";
+        Text = "PlayStation ↔ ViGEm bridge + rumble tester (DS3 / DS4 / DS5)";
         Width = 780; Height = 640; StartPosition = FormStartPosition.CenterScreen;
 
         var tabs = new TabControl { Dock = DockStyle.Fill };

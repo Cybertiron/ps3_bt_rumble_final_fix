@@ -13,15 +13,18 @@ public static class Gamepads
         var ds4 = Ds4Device.OpenAll(out int ds4Busy);
         all.AddRange(ds4);
 
+        var ds5 = Ds5Device.OpenAll(out int ds5Busy);
+        all.AddRange(ds5);
+
+        int busy = ds4Busy + ds5Busy;
         if (all.Count == 0)
         {
-            message = "No controllers opened. " + ds3Msg +
-                      (ds4Busy > 0 ? $" ({ds4Busy} DS4 busy.)" : "");
+            message = "No controllers opened. " + ds3Msg + (busy > 0 ? $" ({busy} busy.)" : "");
         }
         else
         {
-            message = $"opened {ds3.Count} DS3 + {ds4.Count} DS4"
-                      + (ds4Busy > 0 ? $" ({ds4Busy} DS4 busy)" : "");
+            message = $"opened {ds3.Count} DS3 + {ds4.Count} DS4 + {ds5.Count} DS5"
+                      + (busy > 0 ? $" ({busy} busy)" : "");
         }
         return all;
     }
