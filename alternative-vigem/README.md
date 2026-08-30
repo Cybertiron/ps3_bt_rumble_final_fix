@@ -13,7 +13,8 @@ A small WinForms tool that demonstrates the **[ViGEmBus userland alternative](..
 - Sends `XInputSetState` to any connected XInput pad — same idea as the browser tester, native.
 
 **Tab 2 — DS3 direct + ViGEm bridge** (the userland alternative):
-- Reads a DS3 over USB (HidSharp) → creates a virtual **Xbox 360** pad via **ViGEmBus** (no Test Mode).
+- Reads **one or more** DS3 controllers over USB (HidSharp) → creates a virtual **Xbox 360** pad
+  **per controller** via **ViGEmBus** (no Test Mode). Multi-player friendly.
 - Forwards game rumble (ViGEm feedback) back to the DS3.
 - Manual DS3 rumble tester with a **channel selector** — USB interrupt / **BT `0xA2`** / **BT `0x52`** —
   and a byte-level output-report log, so you can *see* why `0x52` (control) fails and `0xA2`

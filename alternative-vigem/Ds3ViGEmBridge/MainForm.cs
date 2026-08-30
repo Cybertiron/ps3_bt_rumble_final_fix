@@ -37,11 +37,10 @@ public sealed class MainForm : Form
     private readonly System.Windows.Forms.Timer _dsAutoOff = new() { Interval = 1000 };
     private bool _dsPulseOn;
 
-    private Ds3Device? _ds3;
+    private readonly List<Ds3Device> _ds3s = new();
     private ViGEmClient? _vigem;
-    private IXbox360Controller? _pad;
+    private readonly List<IXbox360Controller> _pads = new();
     private CancellationTokenSource? _bridgeCts;
-    private volatile byte _lastLarge, _lastSmall;
 
     private readonly ToolTip _tips = new() { AutoPopDelay = 20000, InitialDelay = 300, ReshowDelay = 100, ShowAlways = true };
 
@@ -177,8 +176,9 @@ public sealed class MainForm : Form
 
         btnOpen.Click += (_, _) =>
         {
-            _ds3?.Dispose();
-            _ds3 = Ds3Device.TryOpen(out var msg);
+            foreach (var d in _ds3s) d.Dispose();
+            _ds3s.Clear();
+            _ds3s.AddRange(Ds3Device.OpenAll(out var msg));
             _ds3Status.Text = "DS3: " + msg;
         };
         btnBridge.Click += (_, _) => { if (_bridgeCts is null) StartBridge(); else StopBridge(); btnBridge.Text = _bridgeCts is null ? "Start bridge → Xbox 360" : "Stop bridge"; };
@@ -211,66 +211,72 @@ public sealed class MainForm : Form
     {
         var ch = (Ds3OutputChannel)_cmbChannel.SelectedIndex;
         var report = Ds3Device.BuildOutputReport(large, small, 0x02, ch, out var chDesc);
-        if (_ds3 is { } d) d.WriteRumble(large, small);   // real transport = USB interrupt
-        AppendLine(_dsLog, $"{DateTime.Now:HH:mm:ss.fff}  L={large,-3} S={small,-3} [{chDesc}] ({reason})\n    {BytesToHex(report)}");
+        foreach (var d in _ds3s) d.WriteRumble(large, small);   // real transport = USB interrupt
+        AppendLine(_dsLog, $"{DateTime.Now:HH:mm:ss.fff}  L={large,-3} S={small,-3} [{chDesc}] ({reason}) → {_ds3s.Count} device(s)\n    {BytesToHex(report)}");
     }
 
     // =================== ViGEm bridge ===================
     private void StartBridge()
     {
-        if (_ds3 is null || !_ds3.GetType().Name.Equals(nameof(Ds3Device))) { _vigemStatus.Text = "ViGEm: open the DS3 first"; return; }
+        if (_ds3s.Count == 0) { _vigemStatus.Text = "ViGEm: open the DS3(s) first"; return; }
         try
         {
             _vigem ??= new ViGEmClient();
-            _pad = _vigem.CreateXbox360Controller();
-            _pad.AutoSubmitReport = false;
-            _pad.FeedbackReceived += (_, e) =>
+            _pads.Clear();
+            for (int i = 0; i < _ds3s.Count; i++)
             {
-                _lastLarge = e.LargeMotor; _lastSmall = e.SmallMotor;
-                if (_ds3 is { } d) d.WriteRumble(e.LargeMotor, e.SmallMotor);
-                BeginInvoke(() => _feedback.Text = $"Incoming game rumble: L={e.LargeMotor} S={e.SmallMotor}  → forwarded to DS3");
-            };
-            _pad.Connect();
+                var dev = _ds3s[i];
+                int num = i + 1;
+                var pad = _vigem.CreateXbox360Controller();
+                pad.AutoSubmitReport = false;
+                pad.FeedbackReceived += (_, e) =>
+                {
+                    dev.WriteRumble(e.LargeMotor, e.SmallMotor);
+                    BeginInvoke(() => _feedback.Text = $"Game rumble → pad {num}: L={e.LargeMotor} S={e.SmallMotor}");
+                };
+                pad.Connect();
+                _pads.Add(pad);
+            }
         }
-        catch (Exception ex) { _vigemStatus.Text = "ViGEm: " + ex.Message + " (is ViGEmBus installed?)"; return; }
+        catch (Exception ex) { StopBridge(); _vigemStatus.Text = "ViGEm: " + ex.Message + " (is ViGEmBus installed?)"; return; }
 
-        _vigemStatus.Text = "ViGEm: bridging";
+        _vigemStatus.Text = $"ViGEm: bridging {_pads.Count} pad(s)";
         _bridgeCts = new CancellationTokenSource();
         var ct = _bridgeCts.Token;
         Task.Run(() =>
         {
             while (!ct.IsCancellationRequested)
             {
-                if (_ds3 is { } d && d.ReadState(out var st)) MapToPad(st);
+                for (int i = 0; i < _ds3s.Count && i < _pads.Count; i++)
+                    if (_ds3s[i].ReadState(out var st, 10)) MapToPad(_pads[i], st);
             }
         }, ct);
     }
 
-    private void MapToPad(Ds3InputState st)
+    private static void MapToPad(IXbox360Controller pad, Ds3InputState st)
     {
-        if (_pad is null) return;
-        _pad.SetButtonState(Xbox360Button.A, st.Cross);
-        _pad.SetButtonState(Xbox360Button.B, st.Circle);
-        _pad.SetButtonState(Xbox360Button.X, st.Square);
-        _pad.SetButtonState(Xbox360Button.Y, st.Triangle);
-        _pad.SetButtonState(Xbox360Button.LeftShoulder, st.L1);
-        _pad.SetButtonState(Xbox360Button.RightShoulder, st.R1);
-        _pad.SetButtonState(Xbox360Button.Back, st.Select);
-        _pad.SetButtonState(Xbox360Button.Start, st.Start);
-        _pad.SetButtonState(Xbox360Button.LeftThumb, st.L3);
-        _pad.SetButtonState(Xbox360Button.RightThumb, st.R3);
-        _pad.SetButtonState(Xbox360Button.Guide, st.Ps);
-        _pad.SetButtonState(Xbox360Button.Up, st.Up);
-        _pad.SetButtonState(Xbox360Button.Down, st.Down);
-        _pad.SetButtonState(Xbox360Button.Left, st.Left);
-        _pad.SetButtonState(Xbox360Button.Right, st.Right);
-        _pad.SetSliderValue(Xbox360Slider.LeftTrigger, st.L2Analog);
-        _pad.SetSliderValue(Xbox360Slider.RightTrigger, st.R2Analog);
-        _pad.SetAxisValue(Xbox360Axis.LeftThumbX, ToAxis(st.LX));
-        _pad.SetAxisValue(Xbox360Axis.LeftThumbY, ToAxis((byte)(255 - st.LY)));
-        _pad.SetAxisValue(Xbox360Axis.RightThumbX, ToAxis(st.RX));
-        _pad.SetAxisValue(Xbox360Axis.RightThumbY, ToAxis((byte)(255 - st.RY)));
-        _pad.SubmitReport();
+        pad.SetButtonState(Xbox360Button.A, st.Cross);
+        pad.SetButtonState(Xbox360Button.B, st.Circle);
+        pad.SetButtonState(Xbox360Button.X, st.Square);
+        pad.SetButtonState(Xbox360Button.Y, st.Triangle);
+        pad.SetButtonState(Xbox360Button.LeftShoulder, st.L1);
+        pad.SetButtonState(Xbox360Button.RightShoulder, st.R1);
+        pad.SetButtonState(Xbox360Button.Back, st.Select);
+        pad.SetButtonState(Xbox360Button.Start, st.Start);
+        pad.SetButtonState(Xbox360Button.LeftThumb, st.L3);
+        pad.SetButtonState(Xbox360Button.RightThumb, st.R3);
+        pad.SetButtonState(Xbox360Button.Guide, st.Ps);
+        pad.SetButtonState(Xbox360Button.Up, st.Up);
+        pad.SetButtonState(Xbox360Button.Down, st.Down);
+        pad.SetButtonState(Xbox360Button.Left, st.Left);
+        pad.SetButtonState(Xbox360Button.Right, st.Right);
+        pad.SetSliderValue(Xbox360Slider.LeftTrigger, st.L2Analog);
+        pad.SetSliderValue(Xbox360Slider.RightTrigger, st.R2Analog);
+        pad.SetAxisValue(Xbox360Axis.LeftThumbX, ToAxis(st.LX));
+        pad.SetAxisValue(Xbox360Axis.LeftThumbY, ToAxis((byte)(255 - st.LY)));
+        pad.SetAxisValue(Xbox360Axis.RightThumbX, ToAxis(st.RX));
+        pad.SetAxisValue(Xbox360Axis.RightThumbY, ToAxis((byte)(255 - st.RY)));
+        pad.SubmitReport();
     }
 
     private static short ToAxis(byte v) => (short)Math.Clamp((v - 128) * 258, short.MinValue, short.MaxValue);
@@ -278,8 +284,8 @@ public sealed class MainForm : Form
     private void StopBridge()
     {
         _bridgeCts?.Cancel(); _bridgeCts = null;
-        try { _pad?.Disconnect(); } catch { }
-        _pad = null;
+        foreach (var p in _pads) { try { p.Disconnect(); } catch { } }
+        _pads.Clear();
         _vigemStatus.Text = "ViGEm: idle";
     }
 
@@ -304,7 +310,8 @@ public sealed class MainForm : Form
         _pulseTimer.Stop(); _autoOff.Stop(); _dsPulse.Stop(); _dsAutoOff.Stop();
         StopBridge();
         try { SendXInput(0, 0, "exit"); } catch { }
-        _ds3?.Dispose();
+        foreach (var d in _ds3s) d.Dispose();
+        _ds3s.Clear();
         _vigem?.Dispose();
     }
 }

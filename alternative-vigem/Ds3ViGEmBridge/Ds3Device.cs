@@ -50,24 +50,26 @@ public sealed class Ds3Device : IDisposable
         try { return d.GetFriendlyName(); } catch { return $"VID_{VendorId:X4}&PID_{ProductId:X4}"; }
     }
 
-    public static Ds3Device? TryOpen(out string message)
+    /// <summary>Open every connected DS3 (up to 4) as raw USB HID. Skips any owned by DsHidMini.</summary>
+    public static List<Ds3Device> OpenAll(out string message)
     {
+        var opened = new List<Ds3Device>();
         try
         {
-            var dev = DeviceList.Local.GetHidDevices(VendorId, ProductId).FirstOrDefault();
-            if (dev is null) { message = "DS3 not found (VID 054C / PID 0268). Connect over USB."; return null; }
-            if (!dev.TryOpen(out var stream))
+            var devs = DeviceList.Local.GetHidDevices(VendorId, ProductId).ToList();
+            if (devs.Count == 0) { message = "No DS3 found (VID 054C / PID 0268). Connect over USB."; return opened; }
+            int failed = 0;
+            foreach (var dev in devs)
             {
-                message = "DS3 found but could not open it. It is likely owned by DsHidMini — " +
-                          "remove that driver (or bind the DS3 to WinUSB) to use this userland path.";
-                return null;
+                if (dev.TryOpen(out var stream)) { var d = new Ds3Device(dev, stream); d.SendEnable(); opened.Add(d); }
+                else failed++;
             }
-            var d = new Ds3Device(dev, stream);
-            d.SendEnable();
-            message = $"DS3 opened: {d.Info}";
-            return d;
+            message = opened.Count > 0
+                ? $"opened {opened.Count} DS3(s)" + (failed > 0 ? $" ({failed} busy — DsHidMini owns them?)" : "")
+                : "found DS3(s) but none could be opened — DsHidMini likely owns them (remove it / use WinUSB).";
         }
-        catch (Exception ex) { message = "Open failed: " + ex.Message; return null; }
+        catch (Exception ex) { message = "Open failed: " + ex.Message; }
+        return opened;
     }
 
     /// <summary>DS3 USB "start reporting" feature report (0xF4 = {0x42,0x03,0x00,0x00}).</summary>
