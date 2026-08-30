@@ -13,20 +13,11 @@ public enum Ds3OutputChannel
     BtControl0x52,
 }
 
-public sealed class Ds3InputState
-{
-    public bool Cross, Circle, Square, Triangle;
-    public bool L1, R1, L3, R3, Start, Select, Ps;
-    public bool Up, Down, Left, Right;
-    public byte LX = 128, LY = 128, RX = 128, RY = 128;   // 0..255, 128 = center
-    public byte L2Analog, R2Analog;                        // 0..255
-}
-
 /// <summary>
 /// Minimal DS3 (SIXAXIS) USB HID access: enable reporting, read input, write rumble/LED output.
 /// NOTE: requires the DS3 bound to the generic Windows HID driver (i.e. DsHidMini NOT owning it).
 /// </summary>
-public sealed class Ds3Device : IDisposable
+public sealed class Ds3Device : IGamepad
 {
     public const int VendorId = 0x054C;
     public const int ProductId = 0x0268;
@@ -79,9 +70,9 @@ public sealed class Ds3Device : IDisposable
     }
 
     /// <summary>Read one input report and parse it. Returns false on timeout / non-input report.</summary>
-    public bool ReadState(out Ds3InputState state, int timeoutMs = 50)
+    public bool ReadState(out PadState state, int timeoutMs = 50)
     {
-        state = new Ds3InputState();
+        state = new PadState();
         _stream.ReadTimeout = timeoutMs;
         int n;
         try { n = _stream.Read(_inBuf, 0, _inBuf.Length); }
@@ -158,7 +149,9 @@ public sealed class Ds3Device : IDisposable
     /// interrupt OUT, so only the USB-framed report is actually sent to the device; BT-framed
     /// variants are for byte-level display until a real BT transport is wired in.
     /// </summary>
-    public void WriteRumble(byte largeMotor, byte smallMotor, byte ledMask = 0x02)
+    public void WriteRumble(byte largeMotor, byte smallMotor) => WriteRumbleLed(largeMotor, smallMotor, 0x02);
+
+    private void WriteRumbleLed(byte largeMotor, byte smallMotor, byte ledMask)
     {
         var report = BuildOutputReport(largeMotor, smallMotor, ledMask, Ds3OutputChannel.UsbInterrupt, out _);
         try { _stream.Write(report); } catch { /* device may have detached */ }
@@ -166,7 +159,7 @@ public sealed class Ds3Device : IDisposable
 
     public void Dispose()
     {
-        try { WriteRumble(0, 0, 0x00); } catch { }
+        try { WriteRumbleLed(0, 0, 0x00); } catch { }
         _stream?.Dispose();
     }
 }

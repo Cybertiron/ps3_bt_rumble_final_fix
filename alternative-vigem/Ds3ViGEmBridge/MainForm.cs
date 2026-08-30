@@ -37,7 +37,7 @@ public sealed class MainForm : Form
     private readonly System.Windows.Forms.Timer _dsAutoOff = new() { Interval = 1000 };
     private bool _dsPulseOn;
 
-    private readonly List<Ds3Device> _ds3s = new();
+    private readonly List<IGamepad> _devices = new();
     private ViGEmClient? _vigem;
     private readonly List<IXbox360Controller> _pads = new();
     private CancellationTokenSource? _bridgeCts;
@@ -46,7 +46,7 @@ public sealed class MainForm : Form
 
     public MainForm()
     {
-        Text = "DS3 ↔ ViGEm bridge + rumble tester";
+        Text = "DS3 / DS4 ↔ ViGEm bridge + rumble tester";
         Width = 780; Height = 640; StartPosition = FormStartPosition.CenterScreen;
 
         var tabs = new TabControl { Dock = DockStyle.Fill };
@@ -176,10 +176,10 @@ public sealed class MainForm : Form
 
         btnOpen.Click += (_, _) =>
         {
-            foreach (var d in _ds3s) d.Dispose();
-            _ds3s.Clear();
-            _ds3s.AddRange(Ds3Device.OpenAll(out var msg));
-            _ds3Status.Text = "DS3: " + msg;
+            foreach (var d in _devices) d.Dispose();
+            _devices.Clear();
+            _devices.AddRange(Gamepads.OpenAll(out var msg));
+            _ds3Status.Text = "Devices: " + msg;
         };
         btnBridge.Click += (_, _) => { if (_bridgeCts is null) StartBridge(); else StopBridge(); btnBridge.Text = _bridgeCts is null ? "Start bridge → Xbox 360" : "Stop bridge"; };
 
@@ -211,21 +211,21 @@ public sealed class MainForm : Form
     {
         var ch = (Ds3OutputChannel)_cmbChannel.SelectedIndex;
         var report = Ds3Device.BuildOutputReport(large, small, 0x02, ch, out var chDesc);
-        foreach (var d in _ds3s) d.WriteRumble(large, small);   // real transport = USB interrupt
-        AppendLine(_dsLog, $"{DateTime.Now:HH:mm:ss.fff}  L={large,-3} S={small,-3} [{chDesc}] ({reason}) → {_ds3s.Count} device(s)\n    {BytesToHex(report)}");
+        foreach (var d in _devices) d.WriteRumble(large, small);   // real transport = USB interrupt
+        AppendLine(_dsLog, $"{DateTime.Now:HH:mm:ss.fff}  L={large,-3} S={small,-3} [{chDesc}] ({reason}) → {_devices.Count} device(s)\n    {BytesToHex(report)}");
     }
 
     // =================== ViGEm bridge ===================
     private void StartBridge()
     {
-        if (_ds3s.Count == 0) { _vigemStatus.Text = "ViGEm: open the DS3(s) first"; return; }
+        if (_devices.Count == 0) { _vigemStatus.Text = "ViGEm: open the DS3(s) first"; return; }
         try
         {
             _vigem ??= new ViGEmClient();
             _pads.Clear();
-            for (int i = 0; i < _ds3s.Count; i++)
+            for (int i = 0; i < _devices.Count; i++)
             {
-                var dev = _ds3s[i];
+                var dev = _devices[i];
                 int num = i + 1;
                 var pad = _vigem.CreateXbox360Controller();
                 pad.AutoSubmitReport = false;
@@ -247,13 +247,13 @@ public sealed class MainForm : Form
         {
             while (!ct.IsCancellationRequested)
             {
-                for (int i = 0; i < _ds3s.Count && i < _pads.Count; i++)
-                    if (_ds3s[i].ReadState(out var st, 10)) MapToPad(_pads[i], st);
+                for (int i = 0; i < _devices.Count && i < _pads.Count; i++)
+                    if (_devices[i].ReadState(out var st, 10)) MapToPad(_pads[i], st);
             }
         }, ct);
     }
 
-    private static void MapToPad(IXbox360Controller pad, Ds3InputState st)
+    private static void MapToPad(IXbox360Controller pad, PadState st)
     {
         pad.SetButtonState(Xbox360Button.A, st.Cross);
         pad.SetButtonState(Xbox360Button.B, st.Circle);
@@ -310,8 +310,8 @@ public sealed class MainForm : Form
         _pulseTimer.Stop(); _autoOff.Stop(); _dsPulse.Stop(); _dsAutoOff.Stop();
         StopBridge();
         try { SendXInput(0, 0, "exit"); } catch { }
-        foreach (var d in _ds3s) d.Dispose();
-        _ds3s.Clear();
+        foreach (var d in _devices) d.Dispose();
+        _devices.Clear();
         _vigem?.Dispose();
     }
 }
