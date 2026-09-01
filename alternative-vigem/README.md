@@ -16,9 +16,13 @@ A small WinForms tool that demonstrates the **[ViGEmBus userland alternative](..
 - Reads **one or more** controllers over USB (HidSharp) — **DS3, DS4 and DS5 (DualSense)** — →
   creates a virtual **Xbox 360** pad **per controller** via **ViGEmBus** (no Test Mode). Multi-player
   friendly. (Adding another pad type = one more parser implementing `IGamepad`.)
-- **Note on DualSense extras:** adaptive triggers and advanced haptics **cannot** be bridged — a
-  virtual Xbox 360 pad has no such channel, so games can only send/receive basic two-motor rumble.
-  Those features only work with the native DualSense driver in games that support them.
+- **Note on DualSense extras:** adaptive triggers and advanced haptics **cannot** be bridged from
+  games — a virtual Xbox 360 pad has no such channel, so games can only send/receive basic two-motor
+  rumble. Those features only work with the native DualSense driver in games that support them.
+- **⚠ Experimental DualSense trigger tester:** Tab 2 has Off / Rigid / Weapon buttons that write
+  adaptive-trigger effects **directly** to the pad (not from games). This is **untested** — the
+  output-report byte layout is unverified and very likely needs tuning on real DS5 hardware. Treat
+  it as a starting point, not a finished feature.
 - Forwards game rumble (ViGEm feedback) back to the DS3.
 - Manual DS3 rumble tester with a **channel selector** — USB interrupt / **BT `0xA2`** / **BT `0x52`** —
   and a byte-level output-report log, so you can *see* why `0x52` (control) fails and `0xA2`

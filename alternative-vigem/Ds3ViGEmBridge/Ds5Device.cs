@@ -76,6 +76,34 @@ public sealed class Ds5Device : IGamepad
         try { _stream.Write(r); } catch { }
     }
 
+    // ----------------------------------------------------------------------------------
+    // EXPERIMENTAL / UNTESTED — DualSense adaptive-trigger effects.
+    // The output-report layout and effect encodings below are best-effort and NOT verified
+    // on real hardware. Byte offsets / modes very likely need tuning. Do not rely on this.
+    // ----------------------------------------------------------------------------------
+
+    /// <summary>Effect params (mode byte + up to 9 params). EXPERIMENTAL.</summary>
+    public static readonly byte[] TriggerOff = { 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    public static readonly byte[] TriggerRigid = { 0x01, 0x00, 0xFF, 0, 0, 0, 0, 0, 0, 0 };   // continuous resistance
+    public static readonly byte[] TriggerWeapon = { 0x02, 0x90, 0xB0, 0xFF, 0, 0, 0, 0, 0, 0 }; // section ("weapon")
+
+    /// <summary>
+    /// EXPERIMENTAL: write rumble + left/right adaptive-trigger effects in one DualSense output
+    /// report (0x02). Offsets/flags are unverified — needs testing on a real DS5.
+    /// </summary>
+    public void WriteAdvanced(byte largeRumble, byte smallRumble, byte[]? rightTrigger, byte[]? leftTrigger)
+    {
+        var r = new byte[48];
+        r[0] = 0x02;   // USB output report id
+        r[1] = 0x0F;   // validFlag0: enable rumble + both trigger effects (best-effort)
+        r[2] = 0x00;   // validFlag1
+        r[3] = smallRumble;   // right / weak
+        r[4] = largeRumble;   // left / strong
+        if (rightTrigger != null) for (int i = 0; i < 10 && i < rightTrigger.Length; i++) r[11 + i] = rightTrigger[i];
+        if (leftTrigger != null) for (int i = 0; i < 10 && i < leftTrigger.Length; i++) r[22 + i] = leftTrigger[i];
+        try { _stream.Write(r); } catch { }
+    }
+
     public void Dispose()
     {
         try { WriteRumble(0, 0); } catch { }

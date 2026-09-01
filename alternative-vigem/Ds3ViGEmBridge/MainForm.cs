@@ -199,6 +199,23 @@ public sealed class MainForm : Form
         _tips.SetToolTip(bs, "Stop.");
         _tips.SetToolTip(_feedback, "Live rumble coming from games into the virtual pad (forwarded to the DS3).");
 
+        top.Controls.Add(new Label
+        {
+            AutoSize = true, ForeColor = Color.DarkRed, Margin = new Padding(3, 10, 3, 2),
+            Font = new Font(Font, FontStyle.Bold),
+            Text = "— DualSense extras (⚠ EXPERIMENTAL — untested, needs verification on a real DS5) —",
+        });
+        var t5off = new Button { Text = "Triggers OFF", AutoSize = true };
+        var t5rig = new Button { Text = "Rigid", AutoSize = true };
+        var t5wpn = new Button { Text = "Weapon", AutoSize = true };
+        top.Controls.Add(Row(t5off, t5rig, t5wpn));
+        t5off.Click += (_, _) => Ds5Trigger(Ds5Device.TriggerOff, "OFF");
+        t5rig.Click += (_, _) => Ds5Trigger(Ds5Device.TriggerRigid, "Rigid");
+        t5wpn.Click += (_, _) => Ds5Trigger(Ds5Device.TriggerWeapon, "Weapon");
+        _tips.SetToolTip(t5off, "EXPERIMENTAL / untested: reset DualSense adaptive triggers.");
+        _tips.SetToolTip(t5rig, "EXPERIMENTAL / untested: uniform trigger resistance.");
+        _tips.SetToolTip(t5wpn, "EXPERIMENTAL / untested: 'weapon' section resistance.");
+
         root.Controls.Add(top, 0, 0);
         var logBox = new GroupBox { Text = "Output report log", Dock = DockStyle.Fill };
         logBox.Controls.Add(_dsLog);
@@ -213,6 +230,14 @@ public sealed class MainForm : Form
         var report = Ds3Device.BuildOutputReport(large, small, 0x02, ch, out var chDesc);
         foreach (var d in _devices) d.WriteRumble(large, small);   // real transport = USB interrupt
         AppendLine(_dsLog, $"{DateTime.Now:HH:mm:ss.fff}  L={large,-3} S={small,-3} [{chDesc}] ({reason}) → {_devices.Count} device(s)\n    {BytesToHex(report)}");
+    }
+
+    // EXPERIMENTAL / untested: send a DualSense adaptive-trigger effect to all opened DS5 pads.
+    private void Ds5Trigger(byte[] effect, string name)
+    {
+        int count = 0;
+        foreach (var d5 in _devices.OfType<Ds5Device>()) { d5.WriteAdvanced(0, 0, effect, effect); count++; }
+        AppendLine(_dsLog, $"{DateTime.Now:HH:mm:ss.fff}  DualSense trigger '{name}' → {count} DS5 (EXPERIMENTAL/untested)");
     }
 
     // =================== ViGEm bridge ===================
